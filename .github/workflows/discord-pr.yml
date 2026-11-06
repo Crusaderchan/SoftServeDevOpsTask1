@@ -1,0 +1,59 @@
+
+name: Discord PR Notifications
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            const message = {
+              embeds: [{
+                title: "New Pull Request Created!",
+                url: pr.html_url,
+                color: 5814783,
+                fields: [
+                  {
+                    name: "Title",
+                    value: pr.title
+                  },
+                  {
+                    name: "Author",
+                    value: pr.user.login
+                  },
+                  {
+                    name: "Branch",
+                    value: `${pr.head.ref} → ${pr.base.ref}`
+                  }
+                ],
+                timestamp: new Date().toISOString()
+              }]
+            };
+
+            const response = await fetch(
+              process.env.DISCORD_WEBHOOK_URL,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(message)
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(
+                `Discord webhook failed: ${response.status}`
+              );
+            }
